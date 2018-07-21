@@ -57,6 +57,7 @@ func main() {
 	router.HandleFunc("/task/{id}", GetTask).Methods("GET")
 	router.HandleFunc("/task", CreateTask).Methods("POST")
 	router.HandleFunc("/task/{id}", DeleteTask).Methods("DELETE")
+	router.HandleFunc("/task/{id}", UpdateTask).Methods("PUT")
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
 
@@ -96,7 +97,46 @@ func getLastID() int {
 	return task.ID + 1
 }
 
-func DeleteTask(w http.ResponseWriter, r *http.Request) {}
+func DeleteTask(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+	log.Print("Delete Task with ID: " + id + " requested")
+	if value, err := strconv.Atoi(id); err == nil {
+		for index, item := range tasks {
+			if item.ID == value {
+				tasks = tasks[:index]
+				json.NewEncoder(w).Encode(&CustomResponse{HttpCode: 200, Message: "OK", Response: "Task deleted"})
+				return
+			}
+		}
+		json.NewEncoder(w).Encode(&CustomResponse{HttpCode: 404, Message: "Not Found", Response: "No task found with id: " + id})
+	} else {
+		json.NewEncoder(w).Encode(&CustomResponse{HttpCode: 400, Message: "Bad request", Response: "Id is not a number"})
+	}
+}
+
+func UpdateTask(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id := params["id"]
+	log.Print("Update Task with ID: " + id + " requested")
+	if value, err := strconv.Atoi(id); err == nil {
+		var task Task
+		_ = json.NewDecoder(r.Body).Decode(&task)
+		for index, item := range tasks {
+			if item.ID == value {
+				tasks[index].Name = task.Name
+				tasks[index].Status = task.Status
+				tasks[index].StartDate = task.StartDate
+				tasks[index].EndDate = task.EndDate
+				json.NewEncoder(w).Encode(&CustomResponse{HttpCode: 200, Message: "OK", Response: tasks[index]})
+				return
+			}
+		}
+		json.NewEncoder(w).Encode(&CustomResponse{HttpCode: 404, Message: "Not Found", Response: "No task found with id: " + id})
+	} else {
+		json.NewEncoder(w).Encode(&CustomResponse{HttpCode: 400, Message: "Bad request", Response: "Id is not a number"})
+	}
+}
 
 func CreateMockData() {
 	tasks = append(tasks, Task{ID: 1, Name: "Create a REST API", Status: Ongoing, StartDate: "20/07/2018"})
